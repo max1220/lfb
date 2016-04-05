@@ -1,0 +1,6 @@
+ * Fix setvarinfo
+ * Implement drawing primitives(rect, line, ...)
+ * Optimization flags
+ * clear color issue
+ * getpixel
+ * draw with transparency index
