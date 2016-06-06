@@ -4,3 +4,4 @@
  * clear color issue
  * getpixel
  * draw with transparency index
+ * remove pkg-config from build.sh
