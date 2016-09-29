@@ -1,10 +1,9 @@
 #!/usr/bin/env luajit
 
 local lfb = require("lfb")
-local fb = lfb.newfb("/dev/fb0")
-local varinfo = lfb.getvarinfo(fb)
-local clear = lfb.clear
-local setpixel = lfb.setpixel
+local fb = lfb.new("/dev/fb0")
+local varinfo = fb:getvarinfo()
+local setpixel = fb.setpixel
 
 
 

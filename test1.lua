@@ -1,9 +1,9 @@
 #!/usr/bin/env lua5.1
 
 local lfb = require("lfb")
-local fb = lfb.newfb("/dev/fb0")
-local varinfo = lfb.getvarinfo(fb)
-local fixinfo = lfb.getfixinfo(fb)
+local fb = lfb.new("/dev/fb0")
+local varinfo = fb:getvarinfo()
+local fixinfo = fb:getfixinfo()
 
 print("Static info:")
 for k,v in pairs(varinfo) do
@@ -15,4 +15,4 @@ for k,v in pairs(fixinfo) do
     print("", k,v)
 end
 
-lfb.close(fb)
+fb:close()

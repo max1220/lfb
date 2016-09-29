@@ -1,10 +1,9 @@
 #!/usr/bin/env luajit
 
 local lfb = require("lfb")
-local fb = lfb.newfb("/dev/fb0")
-local varinfo = lfb.getvarinfo(fb)
-local clear = lfb.clear
-local setpixel = lfb.setpixel
+local fb = lfb.new("/dev/fb0")
+local varinfo = fb:getvarinfo()
+local setpixel = fb.setpixel
 
 
 
@@ -12,8 +11,6 @@ local setpixel = lfb.setpixel
 local rp = { x=0.0,  y=0.0 }
 local gp = { x=1.0,  y=0.0 }
 local bp = { x=0.5,  y=0.866 }
-
-local cp = { x=0.5,  y=0.433 }
 
 local xmax = 400
 local ymax = 400
