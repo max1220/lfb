@@ -32,7 +32,7 @@ fb:setpixel(x,y,r,g,b)      | Sets the pixel at the given location to r,g,b
 fb:setrect(rect,r,g,b)      | Fills the pixels in the area determined by rect to r,g,b (use lfb.rect to create a rect instance)
 fb:close()                  | Closes the framebuffer
 fb:__tostring()             | Returns an identifier for the framebuffer device (For example: "Framebuffer: /dev/fb0 (inteldrmfb)")
-lfb:rect(x,y,w,h)           | Creates a new rectangle instance; all the arguments must be non-negative integers; w,h denote the width & height respectively, in pixels, of the rectangle.
+lfb.rect(x,y,w,h)           | Creates a new rectangle instance; all the arguments must be non-negative integers; w,h denote the width & height respectively, in pixels, of the rectangle.
 
 
 example
