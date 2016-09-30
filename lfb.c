@@ -25,6 +25,9 @@
 #define LUA_T_PUSH_S_S(S, S2) lua_pushstring(L, S); lua_pushstring(L, S2); lua_settable(L, -3);
 #define LUA_T_PUSH_S_CF(S, CF) lua_pushstring(L, S); lua_pushcfunction(L, CF); lua_settable(L, -3);
 
+#define FRAMEBUFFER_REGID "1992d3e1-6a72-4a4f-aaae-5159fc3a7728"
+#define RECT_REGID "5b33bd4e-87d6-4885-ba4c-c3c9e991da48"
+
 
 
 typedef struct {
@@ -34,6 +37,12 @@ typedef struct {
     char *fbdev;
     uint8_t *data;
 } framebuffer_t;
+
+
+
+typedef struct {
+    unsigned int x, y, w, h;
+} rect_t;
 
 
 
@@ -72,13 +81,13 @@ static int lfb_clear(lua_State *L) {
 
     unsigned int x;
     unsigned int y;
-    uint8_t r = lua_tointeger(L, 1);
-    uint8_t g = lua_tointeger(L, 2);
-    uint8_t b = lua_tointeger(L, 3);
+    uint8_t r = lua_tointeger(L, 2);
+    uint8_t g = lua_tointeger(L, 3);
+    uint8_t b = lua_tointeger(L, 4);
     uint32_t color = getcolor(lfb, r, g, b);
 
     for (y = 0; y != lfb->vinfo.yres; y++) {
-        uint8_t * data = lfb->data + (y + lfb->vinfo.yoffset) * lfb->finfo.line_length;
+        uint8_t *data = lfb->data + (y + lfb->vinfo.yoffset) * lfb->finfo.line_length;
         switch (lfb->vinfo.bits_per_pixel) {
             case 16:
                 for (x = 0; x != lfb->vinfo.xres; x++) {
@@ -87,6 +96,43 @@ static int lfb_clear(lua_State *L) {
                 break;
             case 32:
                 for (x = 0; x != lfb->vinfo.xres; x++) {
+                    ((uint32_t*)data)[x] = color;
+                }
+                break;
+        }
+    }
+
+    return 0;
+}
+
+
+
+static int lfb_setrect(lua_State *L) {
+    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
+    rect_t *rect = (rect_t *)lua_touserdata(L, 2);
+    if (rect->x >= lfb->vinfo.xres || rect->y >= lfb->vinfo.yres) {
+        return 0;
+    }
+    unsigned int w = (rect->x + rect->w > lfb->vinfo.xres) ? lfb->vinfo.xres - rect->x : rect->w;
+    unsigned int h = (rect->y + rect->h > lfb->vinfo.yres) ? lfb->vinfo.yres - rect->y : rect->h;
+
+    unsigned int x, y;
+    uint8_t r = lua_tointeger(L, 3);
+    uint8_t g = lua_tointeger(L, 4);
+    uint8_t b = lua_tointeger(L, 5);
+    uint32_t color = getcolor(lfb, r, g, b);
+
+    for (y = 0; y != h; y++) {
+        uint8_t *data = lfb->data + (rect->x + lfb->vinfo.xoffset) * (lfb->vinfo.bits_per_pixel/8)
+                + (y + rect->y + lfb->vinfo.yoffset) * lfb->finfo.line_length;
+        switch (lfb->vinfo.bits_per_pixel) {
+            case 16:
+                for (x = 0; x != w; x++) {
+                    ((uint16_t*)data)[x] = color;
+                }
+                break;
+            case 32:
+                for (x = 0; x != w; x++) {
                     ((uint32_t*)data)[x] = color;
                 }
                 break;
@@ -270,6 +316,7 @@ static int lfb_new(lua_State *L) {
 
     
     LUA_T_PUSH_S_CF("setpixel", &lfb_setpixel);
+    LUA_T_PUSH_S_CF("setrect", &lfb_setrect);
     LUA_T_PUSH_S_CF("clear", lfb_clear)
     LUA_T_PUSH_S_CF("close", lfb_close)
     LUA_T_PUSH_S_CF("getfixinfo", lfb_getfixinfo)
@@ -284,11 +331,91 @@ static int lfb_new(lua_State *L) {
 
 
 
+static int lfb_rect_index(lua_State *L) {
+    rect_t *rect = (rect_t *)lua_touserdata(L, 1);
+    const char *key = luaL_checkstring(L, 2);
+
+    lua_getmetatable(L, 1); // self, key, getmetatable(self)
+    lua_getfield(L, -1, key); // self, key, getmetatable(self), getmetatable(self).key
+
+    // Either key is name of a method in the metatable
+    if(!lua_isnil(L, -1) || !*key || key[1]) {
+        return 1;
+    }
+
+    switch (key[0]) {
+        case 'x':
+            lua_pushinteger(L, rect->x);
+            return 1;
+        case 'y':
+            lua_pushinteger(L, rect->y);
+            return 1;
+        case 'w':
+            lua_pushinteger(L, rect->w);
+            return 1;
+        case 'h':
+            lua_pushinteger(L, rect->h);
+            return 1;
+    }
+
+    return 0;
+}
+
+
+
+static int lfb_rect_newindex(lua_State *L) {
+    return luaL_error(L, "rect instances are immutable");
+}
+
+
+
+static int lfb_rect_tostring(lua_State *L) {
+    rect_t *rect = (rect_t *)lua_touserdata(L, 1);
+    lua_pushfstring(L, "{ x=%d, y=%d, w=%d, h=%d }", rect->x, rect->y, rect->w, rect->h);
+    return 1;
+}
+
+
+
+static int lfb_rect(lua_State *L) {
+    rect_t *rect = (rect_t *)lua_newuserdata(L, sizeof(*rect));
+    int x, y, w, h;
+
+    x = luaL_optint(L, 1, 0);
+    y = luaL_optint(L, 2, 0);
+    w = luaL_optint(L, 3, 0);
+    h = luaL_optint(L, 4, 0);
+    if (x < 0) {
+        w += x;
+        x = 0;
+    }
+    if (y < 0) {
+        h += y;
+        y = 0;
+    }
+    rect->x = x;
+    rect->y = y;
+    rect->w = w < 0 ? 0 : w;
+    rect->h = h < 0 ? 0 : h;
+
+    if (luaL_newmetatable(L, RECT_REGID)) {
+        LUA_T_PUSH_S_CF("__index", lfb_rect_index);
+        LUA_T_PUSH_S_CF("__newindex", lfb_rect_newindex);
+        LUA_T_PUSH_S_CF("__tostring", lfb_rect_tostring);
+    }
+    lua_setmetatable(L, -2);
+
+    return 1;
+}
+
+
+
 LUALIB_API int luaopen_lfb(lua_State *L) {
     lua_newtable(L);
 
     LUA_T_PUSH_S_S("version", VERSION)
     LUA_T_PUSH_S_CF("new", lfb_new)
+    LUA_T_PUSH_S_CF("rect", lfb_rect)
 
     return 1;
 }
