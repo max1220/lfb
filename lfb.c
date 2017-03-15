@@ -464,7 +464,8 @@ static int lfb_drawbuffer(lua_State *L) {
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
 
-    
+    LUA_T_PUSH_S_N("width", db->w)
+    LUA_T_PUSH_S_N("height", db->h)
     LUA_T_PUSH_S_CF("get_pixel", lfb_drawbuffer_get_pixel)
     LUA_T_PUSH_S_CF("set_pixel", lfb_drawbuffer_set_pixel)
     LUA_T_PUSH_S_CF("set_rect", lfb_drawbuffer_set_rect)
