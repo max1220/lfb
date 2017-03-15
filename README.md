@@ -12,29 +12,42 @@ Install
 
 There is no installation, just copy the lfb.so file to where ever you need it.
 You can check where lua looks for modules with: `lua -e "print(package.cpath:gsub(';', '\n'):gsub('?', '[filename]'))"`
-If you want to build the module for something diffrent than lua51(and luajit),
-you'll also want to modify "pkg-config lua5.1 --cflags" to match your needs.
 
 
 
 Usage
 -----
 
-command | description
---- | ---
-lfb.version()               | Version string
-fb = lfb.new(fbdev)         | Creates a new framebuffer userspace object & returns it. fbdev is a string, for example "/dev/fb0"
-fb:getvarinfo()             | Get variable info in a table (See http://lxr.free-electrons.com/source/include/uapi/linux/fb.h#L240)
-fb:getfixinfo()             | Get fixed info in a table (See http://lxr.free-electrons.com/source/include/uapi/linux/fb.h#L156)
-fb:setvarinfo(vinfo)        | Sets variable info (Variable names are as in getvarinfo; You don't need to specify all of them, only the ones you want to change)
-fb:clear(r,g,b)             | Clears the framebuffer to the specific color
-fb:setpixel(x,y,r,g,b)      | Sets the pixel at the given location to r,g,b
-fb:setrect(rect,r,g,b)      | Fills the pixels in the area determined by rect to r,g,b (use lfb.rect to create a rect instance)
-fb:close()                  | Closes the framebuffer
-fb:__tostring()             | Returns an identifier for the framebuffer device (For example: "Framebuffer: /dev/fb0 (inteldrmfb)")
-lfb.rect(x,y,w,h)           | Creates a new rectangle instance; all the arguments must be non-negative integers; w,h denote the width & height respectively, in pixels, of the rectangle.
+Since version 1.0 lfb uses a buffer for all drawing operations that is then drawn to the framebuffer.
+Don't expect compability with versions < 1.
 
 
-example
--------
-See `test1.lua` and `test2.lua`
+
+command                      | description
+---------------------------- | -----------
+lfb.version()                | Version string
+fb = lfb.new_fb(fbdev)       | Creates a new framebuffer userspace object & returns it. fbdev is a string, for example "/dev/fb0"
+db = lfb.new_drawbuffer(w,h) | Creates a new drawing buffer.
+
+command               | description
+--------------------- | -----------
+fb:get_varinfo()      | Get variable info in a table (See http://lxr.free-electrons.com/source/include/uapi/linux/fb.h#L240)
+fb:get_fixinfo()      | Get fixed info in a table (See http://lxr.free-electrons.com/source/include/uapi/linux/fb.h#L156)
+fb:set_varinfo(vinfo) | Sets variable info (Variable names are as in getvarinfo; You don't need to specify all of them, only the ones you want to change)
+fb:close()            | Closes the framebuffer
+fb:__tostring()       | Returns an identifier for the framebuffer device (For example: "Framebuffer: /dev/fb0 (inteldrmfb)")
+
+command                    | description
+-------------------------- | -----------
+r,g,b = db:get_pixel(x,y)  | Gets r,g,b values(0-255) at x,y
+db:set_pixel(x,y,r,g,b)    | Sets r,g,b values(0-255) at x,y
+db:set_rect(x,y,w,h,r,g,b) | Fills the rectangle specified via x,y,w,h to r,g,b(0-255)
+db:set_box(x,y,w,h,r,g,b)  | Draws outline of the rectangle specified via x,y,w,h to r,g,b(0-255)
+db:draw_to_fb(fb, x, y)    | Draws the drawing buffer to the framebufer at the specified coordinates
+
+
+
+
+Examples
+--------
+See examples/ folder.
