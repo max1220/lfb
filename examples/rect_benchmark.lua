@@ -1,7 +1,7 @@
 #!/usr/bin/env luajit
 local lfb = require("lfb")
 local fb = lfb.new_fb("/dev/fb0")
-local varinfo = fb:getvarinfo()
+local varinfo = fb:get_varinfo()
 local gettime = require("socket").gettime
 math.randomseed(gettime())
 

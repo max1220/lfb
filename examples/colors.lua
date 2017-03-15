@@ -2,7 +2,7 @@
 
 local lfb = require("lfb")
 local fb = lfb.new_fb("/dev/fb0")
-local varinfo = fb:getvarinfo()
+local varinfo = fb:get_varinfo()
 local buffer = lfb.new_drawbuffer(varinfo.xres, varinfo.yres)
 
 
