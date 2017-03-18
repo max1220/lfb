@@ -72,39 +72,6 @@ static void getnumfield32(lua_State *L, const char *key, uint32_t *dest) {
 }
 
 
-static int lfb_framebuffer(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_newuserdata(L, sizeof(*lfb));
-
-    lfb->fd = open(luaL_checkstring(L, 1), O_RDWR);
-    if (lfb->fd < 0) {
-        return luaL_error(L, "Couldn't open framebuffer: %s", strerror(errno));
-    }
-
-    ioctl(lfb->fd, FBIOGET_FSCREENINFO, &lfb->finfo);
-    ioctl(lfb->fd, FBIOGET_VSCREENINFO, &lfb->vinfo);
-    if (lfb->vinfo.bits_per_pixel != 16 && lfb->vinfo.bits_per_pixel != 32) {
-        close(lfb->fd);
-        lfb->fd = -1;
-        return luaL_error(L, "Only 16 & 32 bpp are supported, not: %d", lfb->vinfo.bits_per_pixel);
-    }
-    lfb->data = mmap(0, (lfb->vinfo.yres_virtual * lfb->finfo.line_length), PROT_READ | PROT_WRITE, MAP_SHARED, lfb->fd, (off_t)0);
-    lfb->fbdev = strdup(luaL_checkstring(L, 1));
-
-    lua_createtable(L, 0, 9);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-
-    
-    LUA_T_PUSH_S_CF("close", lfb_framebuffer_close)
-    LUA_T_PUSH_S_CF("get_fixinfo", lfb_framebuffer_getfixinfo)
-    LUA_T_PUSH_S_CF("get_varinfo", lfb_framebuffer_getvarinfo)
-    LUA_T_PUSH_S_CF("set_varinfo", lfb_framebuffer_setvarinfo)
-    LUA_T_PUSH_S_CF("__gc", lfb_framebuffer_close)
-    LUA_T_PUSH_S_CF("__tostring", lfb_framebuffer_tostring)
-    lua_setmetatable(L, -2);
-
-    return 1;
-}
 
 static int lfb_framebuffer_close(lua_State *L) {
     framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 1);
@@ -220,6 +187,40 @@ static int lfb_framebuffer_tostring(lua_State *L) {
     return 1;
 }
 
+static int lfb_framebuffer(lua_State *L) {
+    framebuffer_t *lfb = (framebuffer_t *)lua_newuserdata(L, sizeof(*lfb));
+
+    lfb->fd = open(luaL_checkstring(L, 1), O_RDWR);
+    if (lfb->fd < 0) {
+        return luaL_error(L, "Couldn't open framebuffer: %s", strerror(errno));
+    }
+
+    ioctl(lfb->fd, FBIOGET_FSCREENINFO, &lfb->finfo);
+    ioctl(lfb->fd, FBIOGET_VSCREENINFO, &lfb->vinfo);
+    if (lfb->vinfo.bits_per_pixel != 16 && lfb->vinfo.bits_per_pixel != 32) {
+        close(lfb->fd);
+        lfb->fd = -1;
+        return luaL_error(L, "Only 16 & 32 bpp are supported, not: %d", lfb->vinfo.bits_per_pixel);
+    }
+    lfb->data = mmap(0, (lfb->vinfo.yres_virtual * lfb->finfo.line_length), PROT_READ | PROT_WRITE, MAP_SHARED, lfb->fd, (off_t)0);
+    lfb->fbdev = strdup(luaL_checkstring(L, 1));
+
+    lua_createtable(L, 0, 9);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "__index");
+
+    
+    LUA_T_PUSH_S_CF("close", lfb_framebuffer_close)
+    LUA_T_PUSH_S_CF("get_fixinfo", lfb_framebuffer_getfixinfo)
+    LUA_T_PUSH_S_CF("get_varinfo", lfb_framebuffer_getvarinfo)
+    LUA_T_PUSH_S_CF("set_varinfo", lfb_framebuffer_setvarinfo)
+    LUA_T_PUSH_S_CF("__gc", lfb_framebuffer_close)
+    LUA_T_PUSH_S_CF("__tostring", lfb_framebuffer_tostring)
+    lua_setmetatable(L, -2);
+
+    return 1;
+}
+
 
 static int lfb_drawbuffer_tostring(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
@@ -278,10 +279,10 @@ static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
                 location = (x + cx + fb->vinfo.xoffset) * (fb->vinfo.bits_per_pixel/8) + (y + cy + fb->vinfo.yoffset) * fb->finfo.line_length;
                 switch (fb->vinfo.bits_per_pixel) {
                     case 16:
-                        *(uint16_t*)(lfb->data + location) = pixel;
+                        *(uint16_t*)(fb->data + location) = pixel;
                         break;
                     case 32:
-                        *(uint32_t*)(lfb->data + location) = pixel;
+                        *(uint32_t*)(fb->data + location) = pixel;
                         break;
                 }
             }
