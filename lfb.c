@@ -38,7 +38,7 @@ typedef struct {
 } framebuffer_t;
 
 typedef struct {
-    uint8_t r, g, b;
+    uint8_t r, g, b, a;
 } pixel_t;
 
 typedef struct {
@@ -300,7 +300,7 @@ static int lfb_tostring(lua_State *L) {
 static int lfb_drawbuffer_tostring(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
 
-    lua_pushfstring(L, "Drawbuffer: %dx%d at %d,%d", db->w, db->h);
+    lua_pushfstring(L, "Drawbuffer: %dx%d", db->w, db->h);
 
     return 1;
 }
@@ -318,12 +318,13 @@ static int lfb_drawbuffer_clear(lua_State *L) {
     int r = lua_tointeger(L, 2);
     int g = lua_tointeger(L, 3);
     int b = lua_tointeger(L, 4);
+    int a = lua_tointeger(L, 5);
     int y = 0;
     int x = 0;
 
     for (y = 0; y < db->h; y=y+1) {
         for (x = 0; x < db->w; x=x+1) {
-            db->data[y*db->w+x] = (pixel_t) {.r=r, .g=g, .b=b};
+            db->data[y*db->w+x] = (pixel_t) {.r=r, .g=g, .b=b, .a=a};
         }
     }
 
@@ -347,10 +348,8 @@ static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
             p = db->data[cy*db->w+cx];
             pixel = getcolor(lfb, p.r, p.g, p.b);
             
-            if (x+cx < 0 || y+cy < 0 || x+cx >= (int)lfb->vinfo.xres || y+cy >= (int)lfb->vinfo.yres) {
-                lua_pushnil(L);
-                lua_pushfstring(L, "Draw out of bounds!");
-                return 2;
+            if (x+cx < 0 || y+cy < 0 || x+cx >= (int)lfb->vinfo.xres || y+cy >= (int)lfb->vinfo.yres || pixel.a <= 0) {
+                continue
             } else {
                 location = (x + cx + lfb->vinfo.xoffset) * (lfb->vinfo.bits_per_pixel/8) + (y + cy + lfb->vinfo.yoffset) * lfb->finfo.line_length;
                 switch (lfb->vinfo.bits_per_pixel) {
@@ -369,6 +368,36 @@ static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
     return 1;
 }
 
+static int lfb_drawbuffer_draw_to_drawbuffer(lua_State *L) {
+    drawbuffer_t *origin_db = (drawbuffer_t *)lua_touserdata(L, 1);
+    framebuffer_t *target_fb = (drawbuffer_t *)lua_touserdata(L, 2);
+    
+    int target_x = lua_tointeger(L, 3);
+    int target_y = lua_tointeger(L, 4);
+    
+    int origin_x = lua_tointeger(L, 3);
+    int origin_y = lua_tointeger(L, 4);
+    
+    int w = lua_tointeger(L, 5);
+    int h = lua_tointeger(L, 6);
+    
+    int cx;
+    int cy;
+
+    for (cy=origin_x; cy < origin_x+h; cy=cy+1) {
+        for (cx=origin_x; cx < origin_x+w; cx=cx+1) {
+            if (x+cx < 0 || y+cy < 0 || x+cx >= target_fb->width || y+cy >= target_fb->height || x+cx >= origin_fb->width || y+cy >= origin_fb->height) {
+                continue;
+            } else {
+                target_fb->data[(cy+target_y)*db->w+cx+target_x] = origin_db->data[cy*origin_db->w+cx];
+            }
+        }
+    }
+
+    lua_pushnumber(L, 0);
+    return 1;
+}
+
 static int lfb_drawbuffer_get_pixel(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
     int x = lua_tointeger(L, 2);
@@ -379,8 +408,9 @@ static int lfb_drawbuffer_get_pixel(lua_State *L) {
     lua_pushinteger(L, p.r);
     lua_pushinteger(L, p.g);
     lua_pushinteger(L, p.b);
+    lua_pushinteger(L, p.a);
     
-    return 3;
+    return 4;
 }
 
 static int lfb_drawbuffer_set_pixel(lua_State *L) {
@@ -390,8 +420,9 @@ static int lfb_drawbuffer_set_pixel(lua_State *L) {
     int r = lua_tointeger(L, 4);
     int g = lua_tointeger(L, 5);
     int b = lua_tointeger(L, 6);
+    int a = lua_tointeger(L, 7);
     
-    pixel_t p = {.r=r, .g=g, .b=b};
+    pixel_t p = {.r=r, .g=g, .b=b, .a=a};
     
     db->data[y*db->w+x] = p;
     
@@ -406,12 +437,13 @@ static int lfb_drawbuffer_set_rect(lua_State *L) {
     int h = lua_tointeger(L, 5);
     int r = lua_tointeger(L, 6);
     int g = lua_tointeger(L, 7);
-    int b = lua_tointeger(L, 7);
+    int b = lua_tointeger(L, 8);
+    int a = lua_tointeger(L, 9);
     
     int cx;
     int cy;
     
-    pixel_t p = {.r=r, .g=g, .b=b};
+    pixel_t p = {.r=r, .g=g, .b=b, .a=a};
     
     for (cy=y; cy < y+h; cy=cy+1) {
         for (cx=x; cx < x+w; cx=cx+1) {
@@ -430,12 +462,13 @@ static int lfb_drawbuffer_set_box(lua_State *L) {
     int h = lua_tointeger(L, 5);
     int r = lua_tointeger(L, 6);
     int g = lua_tointeger(L, 7);
-    int b = lua_tointeger(L, 7);
+    int b = lua_tointeger(L, 8);
+    int a = lua_tointeger(L, 9);
     
     int cx;
     int cy;
     
-    pixel_t p = {.r=r, .g=g, .b=b};
+    pixel_t p = {.r=r, .g=g, .b=b, .a=a};
     
     for (cy=y; cy < y+h-1; cy=cy+1) {
         db->data[cy*db->w+x] = p;

@@ -1,2 +1,3 @@
  * getpixel
  * remove pkg-config from build.sh
+ * check parameters for validity(e.g. set_pixel should check for x < db->w)
