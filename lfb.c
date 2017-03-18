@@ -285,7 +285,7 @@ static int lfb_drawbuffer_pixel_function(lua_State *L) {
 
 }
 
-static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
+static int lfb_drawbuffer_draw_to_framebuffer(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
     framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 2);
     
@@ -458,7 +458,7 @@ static int lfb_drawbuffer(lua_State *L) {
     LUA_T_PUSH_S_CF("set_rect", lfb_drawbuffer_set_rect)
     LUA_T_PUSH_S_CF("set_box", lfb_drawbuffer_set_box)
     LUA_T_PUSH_S_CF("clear", lfb_drawbuffer_clear)
-    LUA_T_PUSH_S_CF("draw_to_fb", lfb_drawbuffer_draw_to_fb)
+    LUA_T_PUSH_S_CF("draw_to_framebuffer", lfb_drawbuffer_draw_to_framebuffer)
     LUA_T_PUSH_S_CF("draw_to_drawbuffer", lfb_drawbuffer_draw_to_drawbuffer)
     LUA_T_PUSH_S_CF("pixel_function", lfb_drawbuffer_pixel_function)
     LUA_T_PUSH_S_CF("close", lfb_drawbuffer_close)
