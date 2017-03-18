@@ -348,8 +348,8 @@ static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
             p = db->data[cy*db->w+cx];
             pixel = getcolor(lfb, p.r, p.g, p.b);
             
-            if (x+cx < 0 || y+cy < 0 || x+cx >= (int)lfb->vinfo.xres || y+cy >= (int)lfb->vinfo.yres || pixel.a <= 0) {
-                continue
+            if (x+cx < 0 || y+cy < 0 || x+cx >= (int)lfb->vinfo.xres || y+cy >= (int)lfb->vinfo.yres || p.a <= 0) {
+                continue;
             } else {
                 location = (x + cx + lfb->vinfo.xoffset) * (lfb->vinfo.bits_per_pixel/8) + (y + cy + lfb->vinfo.yoffset) * lfb->finfo.line_length;
                 switch (lfb->vinfo.bits_per_pixel) {
@@ -370,7 +370,7 @@ static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
 
 static int lfb_drawbuffer_draw_to_drawbuffer(lua_State *L) {
     drawbuffer_t *origin_db = (drawbuffer_t *)lua_touserdata(L, 1);
-    framebuffer_t *target_fb = (drawbuffer_t *)lua_touserdata(L, 2);
+    drawbuffer_t *target_db = (drawbuffer_t *)lua_touserdata(L, 2);
     
     int target_x = lua_tointeger(L, 3);
     int target_y = lua_tointeger(L, 4);
@@ -386,10 +386,10 @@ static int lfb_drawbuffer_draw_to_drawbuffer(lua_State *L) {
 
     for (cy=origin_x; cy < origin_x+h; cy=cy+1) {
         for (cx=origin_x; cx < origin_x+w; cx=cx+1) {
-            if (x+cx < 0 || y+cy < 0 || x+cx >= target_fb->width || y+cy >= target_fb->height || x+cx >= origin_fb->width || y+cy >= origin_fb->height) {
+            if (target_x + cx >= target_db->w || target_y + cy >= target_db->h || origin_x + cx >= origin_db->w || origin_y + cy >= origin_db->h ) {
                 continue;
             } else {
-                target_fb->data[(cy+target_y)*db->w+cx+target_x] = origin_db->data[cy*origin_db->w+cx];
+                target_db->data[(cy+target_y)*target_db->w+cx+target_x] = origin_db->data[cy*origin_db->w+cx];
             }
         }
     }
@@ -505,6 +505,7 @@ static int lfb_drawbuffer(lua_State *L) {
     LUA_T_PUSH_S_CF("set_box", lfb_drawbuffer_set_box)
     LUA_T_PUSH_S_CF("clear", lfb_drawbuffer_clear)
     LUA_T_PUSH_S_CF("draw_to_fb", lfb_drawbuffer_draw_to_fb)
+    LUA_T_PUSH_S_CF("draw_to_drawbuffer", lfb_drawbuffer_draw_to_drawbuffer)
     LUA_T_PUSH_S_CF("close", lfb_drawbuffer_close)
     LUA_T_PUSH_S_CF("__gc", lfb_drawbuffer_close)
     LUA_T_PUSH_S_CF("__tostring", lfb_drawbuffer_tostring)
