@@ -338,12 +338,12 @@ static int lfb_drawbuffer_draw_to_drawbuffer(lua_State *L) {
     int cx;
     int cy;
 
-    for (cy=origin_x; cy < origin_x+h; cy=cy+1) {
-        for (cx=origin_x; cx < origin_x+w; cx=cx+1) {
+    for (cy=0; cy < h; cy=cy+1) {
+        for (cx=0; cx < w; cx=cx+1) {
             if (target_x + cx >= target_db->w || target_y + cy >= target_db->h || origin_x + cx >= origin_db->w || origin_y + cy >= origin_db->h ) {
                 continue;
             } else {
-                target_db->data[(cy+target_y)*target_db->w+cx+target_x] = origin_db->data[cy*origin_db->w+cx];
+                target_db->data[(cy+target_y)*target_db->w+cx+target_x] = origin_db->data[(cy+origin_y)*origin_db->w+cx+origin_x];
             }
         }
     }
