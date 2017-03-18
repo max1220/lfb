@@ -21,11 +21,11 @@
 
 #define VERSION "1.0"
 
+#define FRAMEBUFFER_REGID "1992d3e1-6a72-4a4f-aaae-5159fc3a7728"
+
 #define LUA_T_PUSH_S_N(S, N) lua_pushstring(L, S); lua_pushnumber(L, N); lua_settable(L, -3);
 #define LUA_T_PUSH_S_S(S, S2) lua_pushstring(L, S); lua_pushstring(L, S2); lua_settable(L, -3);
 #define LUA_T_PUSH_S_CF(S, CF) lua_pushstring(L, S); lua_pushcfunction(L, CF); lua_settable(L, -3);
-
-#define FRAMEBUFFER_REGID "1992d3e1-6a72-4a4f-aaae-5159fc3a7728"
 
 
 
@@ -45,8 +45,6 @@ typedef struct {
     int w, h;
     pixel_t *data;
 } drawbuffer_t;
-
-
 
 
 
@@ -72,106 +70,6 @@ static void getnumfield32(lua_State *L, const char *key, uint32_t *dest) {
     }
     lua_pop(L, 1);
 }
-
-
-/* 
-
-static int lfb_clear(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
-
-    unsigned int x;
-    unsigned int y;
-    uint8_t r = lua_tointeger(L, 2);
-    uint8_t g = lua_tointeger(L, 3);
-    uint8_t b = lua_tointeger(L, 4);
-    uint32_t color = getcolor(lfb, r, g, b);
-
-    for (y = 0; y != lfb->vinfo.yres; y++) {
-        uint8_t *data = lfb->data + (y + lfb->vinfo.yoffset) * lfb->finfo.line_length;
-        switch (lfb->vinfo.bits_per_pixel) {
-            case 16:
-                for (x = 0; x != lfb->vinfo.xres; x++) {
-                    ((uint16_t*)data)[x] = color;
-                }
-                break;
-            case 32:
-                for (x = 0; x != lfb->vinfo.xres; x++) {
-                    ((uint32_t*)data)[x] = color;
-                }
-                break;
-        }
-    }
-
-    return 0;
-}
-
-
-
-static int lfb_setrect(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
-    rect_t *rect = (rect_t *)lua_touserdata(L, 2);
-    if (rect->x >= lfb->vinfo.xres || rect->y >= lfb->vinfo.yres) {
-        return 0;
-    }
-    unsigned int w = (rect->x + rect->w > lfb->vinfo.xres) ? lfb->vinfo.xres - rect->x : rect->w;
-    unsigned int h = (rect->y + rect->h > lfb->vinfo.yres) ? lfb->vinfo.yres - rect->y : rect->h;
-
-    unsigned int x, y;
-    uint8_t r = lua_tointeger(L, 3);
-    uint8_t g = lua_tointeger(L, 4);
-    uint8_t b = lua_tointeger(L, 5);
-    uint32_t color = getcolor(lfb, r, g, b);
-
-    for (y = 0; y != h; y++) {
-        uint8_t *data = lfb->data + (rect->x + lfb->vinfo.xoffset) * (lfb->vinfo.bits_per_pixel/8)
-                + (y + rect->y + lfb->vinfo.yoffset) * lfb->finfo.line_length;
-        switch (lfb->vinfo.bits_per_pixel) {
-            case 16:
-                for (x = 0; x != w; x++) {
-                    ((uint16_t*)data)[x] = color;
-                }
-                break;
-            case 32:
-                for (x = 0; x != w; x++) {
-                    ((uint32_t*)data)[x] = color;
-                }
-                break;
-        }
-    }
-
-    return 0;
-}
-
-
-
-static int lfb_setpixel(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
-    int x = lua_tointeger(L, 2);
-    int y = lua_tointeger(L, 3);
-    int location = (x + lfb->vinfo.xoffset) * (lfb->vinfo.bits_per_pixel/8) + (y + lfb->vinfo.yoffset) * lfb->finfo.line_length;
-    if (x < 0 || y < 0 || x >= (int)lfb->vinfo.xres || y >= (int)lfb->vinfo.yres) {
-        return 0;
-    }
-
-    uint8_t r = lua_tointeger(L, 4);
-    uint8_t g = lua_tointeger(L, 5);
-    uint8_t b = lua_tointeger(L, 6);
-    uint32_t pixel = getcolor(lfb, r, g, b);
-    switch (lfb->vinfo.bits_per_pixel) {
-        case 16:
-            *(uint16_t*)(lfb->data + location) = pixel;
-            break;
-        case 32:
-            *(uint32_t*)(lfb->data + location) = pixel;
-            break;
-    }
-
-    return 0;
-}
-
-*/
-
-
 
 
 static int lfb_framebuffer(lua_State *L) {
@@ -207,8 +105,6 @@ static int lfb_framebuffer(lua_State *L) {
 
     return 1;
 }
-
-
 
 static int lfb_framebuffer_close(lua_State *L) {
     framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 1);
@@ -323,9 +219,6 @@ static int lfb_framebuffer_tostring(lua_State *L) {
 
     return 1;
 }
-
-
-
 
 
 static int lfb_drawbuffer_tostring(lua_State *L) {
@@ -544,9 +437,6 @@ static int lfb_drawbuffer(lua_State *L) {
     
     return 1;
 }
-
-
-
 
 
 LUALIB_API int luaopen_lfb(lua_State *L) {
