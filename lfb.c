@@ -256,6 +256,35 @@ static int lfb_drawbuffer_clear(lua_State *L) {
     return 0;
 }
 
+static int lfb_drawbuffer_pixel_function(lua_State *L) {
+    drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
+    pixel_t p;
+    int x,y;
+    
+    if (lua_gettop(L) == 2 && lua_isfunction(L, 2)) {
+        for (y = 0; y < db->h; y=y+1) {
+            for (x = 0; x < db->w; x=x+1) {
+                p = db->data[y*db->w+x];
+                lua_pushnumber(L, x);
+                lua_pushnumber(L, y);
+                lua_pushnumber(L, p.r);
+                lua_pushnumber(L, p.g);
+                lua_pushnumber(L, p.b);
+                lua_pushnumber(L, p.a);
+                lua_pcall(L, 6, 4, 0);
+                p.r = lua_tointeger(L, 1);
+                p.g = lua_tointeger(L, 2);
+                p.b = lua_tointeger(L, 3);
+                p.a = lua_tointeger(L, 4);
+                lua_pop(L, 4);
+                db->data[y*db->w+x] = p;
+            }
+        }
+    }
+    return 0;
+
+}
+
 static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
     framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 2);
@@ -431,6 +460,7 @@ static int lfb_drawbuffer(lua_State *L) {
     LUA_T_PUSH_S_CF("clear", lfb_drawbuffer_clear)
     LUA_T_PUSH_S_CF("draw_to_fb", lfb_drawbuffer_draw_to_fb)
     LUA_T_PUSH_S_CF("draw_to_drawbuffer", lfb_drawbuffer_draw_to_drawbuffer)
+    LUA_T_PUSH_S_CF("pixel_function", lfb_drawbuffer_pixel_function)
     LUA_T_PUSH_S_CF("close", lfb_drawbuffer_close)
     LUA_T_PUSH_S_CF("__gc", lfb_drawbuffer_close)
     LUA_T_PUSH_S_CF("__tostring", lfb_drawbuffer_tostring)
