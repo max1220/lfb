@@ -48,17 +48,6 @@ typedef struct {
 
 
 
-static int lfb_close(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
-
-    if (lfb->fd >= 0) {
-        close(lfb->fd);
-        lfb->fd = -1;
-        free(lfb->fbdev);
-    }
-
-    return 0;
-}
 
 
 static inline uint32_t getcolor(framebuffer_t *lfb, uint8_t r, uint8_t g, uint8_t b) {
@@ -73,6 +62,15 @@ static inline uint32_t getcolor(framebuffer_t *lfb, uint8_t r, uint8_t g, uint8_
                 (b << lfb->vinfo.blue.offset);
     }
     return -1;
+}
+
+static void getnumfield32(lua_State *L, const char *key, uint32_t *dest) {
+    lua_pushstring(L, key);
+    lua_gettable(L, -2);
+    if (lua_isnumber(L, -1)) {
+        *dest = lua_tonumber(L, -1);
+    }
+    lua_pop(L, 1);
 }
 
 
@@ -174,118 +172,151 @@ static int lfb_setpixel(lua_State *L) {
 */
 
 
-static int lfb_getvarinfo(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
-
-    ioctl(lfb->fd, FBIOGET_VSCREENINFO, &lfb->vinfo);
-
-    lua_newtable(L);
-
-    LUA_T_PUSH_S_N("xres", lfb->vinfo.xres);
-    LUA_T_PUSH_S_N("yres", lfb->vinfo.yres);
-    LUA_T_PUSH_S_N("xres_virtual", lfb->vinfo.xres_virtual);
-    LUA_T_PUSH_S_N("yres_virtual", lfb->vinfo.yres_virtual);
-    LUA_T_PUSH_S_N("xoffset", lfb->vinfo.xoffset);
-    LUA_T_PUSH_S_N("yoffset", lfb->vinfo.yoffset);
-    LUA_T_PUSH_S_N("bits_per_pixel", lfb->vinfo.bits_per_pixel);
-    LUA_T_PUSH_S_N("grayscale", lfb->vinfo.grayscale);
-    LUA_T_PUSH_S_N("nonstd", lfb->vinfo.nonstd);
-    LUA_T_PUSH_S_N("activate", lfb->vinfo.activate);
-    LUA_T_PUSH_S_N("width", lfb->vinfo.width);
-    LUA_T_PUSH_S_N("height", lfb->vinfo.height);
-
-    LUA_T_PUSH_S_N("pixclock", lfb->vinfo.pixclock);
-    LUA_T_PUSH_S_N("left_margin", lfb->vinfo.left_margin);
-    LUA_T_PUSH_S_N("right_margin", lfb->vinfo.right_margin);
-    LUA_T_PUSH_S_N("upper_margin", lfb->vinfo.upper_margin);
-    LUA_T_PUSH_S_N("lower_margin", lfb->vinfo.lower_margin);
-    LUA_T_PUSH_S_N("hsync_len", lfb->vinfo.hsync_len);
-    LUA_T_PUSH_S_N("vsync_len", lfb->vinfo.vsync_len);
-    LUA_T_PUSH_S_N("sync", lfb->vinfo.sync);
-    LUA_T_PUSH_S_N("vmode", lfb->vinfo.vmode);
-    LUA_T_PUSH_S_N("rotate", lfb->vinfo.rotate);
-    LUA_T_PUSH_S_N("colorspace", lfb->vinfo.colorspace);
-
-    return 1;
-}
 
 
+static int lfb_framebuffer(lua_State *L) {
+    framebuffer_t *lfb = (framebuffer_t *)lua_newuserdata(L, sizeof(*lfb));
 
-static int lfb_getfixinfo(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
-
-    lua_newtable(L);
-
-    LUA_T_PUSH_S_S("id", lfb->finfo.id)
-    LUA_T_PUSH_S_N("smem_start", lfb->finfo.smem_start);
-    LUA_T_PUSH_S_N("type", lfb->finfo.type);
-    LUA_T_PUSH_S_N("type_aux", lfb->finfo.type_aux);
-    LUA_T_PUSH_S_N("visual", lfb->finfo.visual);
-    LUA_T_PUSH_S_N("xpanstep", lfb->finfo.xpanstep);
-    LUA_T_PUSH_S_N("ypanstep", lfb->finfo.ypanstep);
-    LUA_T_PUSH_S_N("ywrapstep", lfb->finfo.ywrapstep);
-    LUA_T_PUSH_S_N("line_length", lfb->finfo.line_length);
-    LUA_T_PUSH_S_N("mmio_start", lfb->finfo.mmio_start);
-    LUA_T_PUSH_S_N("mmio_len", lfb->finfo.mmio_len);
-    LUA_T_PUSH_S_N("accel", lfb->finfo.accel);
-    LUA_T_PUSH_S_N("capabilities", lfb->finfo.capabilities);
-
-    return 1;
-}
-
-
-
-static void getnumfield32(lua_State *L, const char *key, uint32_t *dest) {
-    lua_pushstring(L, key);
-    lua_gettable(L, -2);
-    if (lua_isnumber(L, -1)) {
-        *dest = lua_tonumber(L, -1);
+    lfb->fd = open(luaL_checkstring(L, 1), O_RDWR);
+    if (lfb->fd < 0) {
+        return luaL_error(L, "Couldn't open framebuffer: %s", strerror(errno));
     }
-    lua_pop(L, 1);
-}
 
-
-
-static int lfb_setvarinfo(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
-
+    ioctl(lfb->fd, FBIOGET_FSCREENINFO, &lfb->finfo);
     ioctl(lfb->fd, FBIOGET_VSCREENINFO, &lfb->vinfo);
+    if (lfb->vinfo.bits_per_pixel != 16 && lfb->vinfo.bits_per_pixel != 32) {
+        close(lfb->fd);
+        lfb->fd = -1;
+        return luaL_error(L, "Only 16 & 32 bpp are supported, not: %d", lfb->vinfo.bits_per_pixel);
+    }
+    lfb->data = mmap(0, (lfb->vinfo.yres_virtual * lfb->finfo.line_length), PROT_READ | PROT_WRITE, MAP_SHARED, lfb->fd, (off_t)0);
+    lfb->fbdev = strdup(luaL_checkstring(L, 1));
 
-    getnumfield32(L, "xres", &lfb->vinfo.xres);
-    getnumfield32(L, "yres", &lfb->vinfo.yres);
-    getnumfield32(L, "xres_virtual", &lfb->vinfo.xres_virtual);
-    getnumfield32(L, "yres_virtual", &lfb->vinfo.yres_virtual);
-    getnumfield32(L, "xoffset", &lfb->vinfo.xoffset);
-    getnumfield32(L, "yoffset", &lfb->vinfo.yoffset);
-    getnumfield32(L, "bits_per_pixel", &lfb->vinfo.bits_per_pixel);
-    getnumfield32(L, "grayscale", &lfb->vinfo.grayscale);
-    getnumfield32(L, "nonstd", &lfb->vinfo.nonstd);
-    getnumfield32(L, "activate", &lfb->vinfo.activate);
-    getnumfield32(L, "width", &lfb->vinfo.width);
-    getnumfield32(L, "height", &lfb->vinfo.height);
+    lua_createtable(L, 0, 9);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "__index");
 
-    getnumfield32(L, "pixclock", &lfb->vinfo.pixclock);
-    getnumfield32(L, "left_margin", &lfb->vinfo.left_margin);
-    getnumfield32(L, "right_margin", &lfb->vinfo.right_margin);
-    getnumfield32(L, "upper_margin", &lfb->vinfo.upper_margin);
-    getnumfield32(L, "lower_margin", &lfb->vinfo.lower_margin);
-    getnumfield32(L, "hsync_len", &lfb->vinfo.hsync_len);
-    getnumfield32(L, "vsync_len", &lfb->vinfo.vsync_len);
-    getnumfield32(L, "sync", &lfb->vinfo.sync);
-    getnumfield32(L, "vmode", &lfb->vinfo.vmode);
-    getnumfield32(L, "rotate", &lfb->vinfo.rotate);
-    getnumfield32(L, "colorspace", &lfb->vinfo.colorspace);
+    
+    LUA_T_PUSH_S_CF("close", lfb_framebuffer_close)
+    LUA_T_PUSH_S_CF("get_fixinfo", lfb_framebuffer_getfixinfo)
+    LUA_T_PUSH_S_CF("get_varinfo", lfb_framebuffer_getvarinfo)
+    LUA_T_PUSH_S_CF("set_varinfo", lfb_framebuffer_setvarinfo)
+    LUA_T_PUSH_S_CF("__gc", lfb_framebuffer_close)
+    LUA_T_PUSH_S_CF("__tostring", lfb_framebuffer_tostring)
+    lua_setmetatable(L, -2);
 
     return 1;
 }
 
 
 
-static int lfb_tostring(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 1);
+static int lfb_framebuffer_close(lua_State *L) {
+    framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 1);
 
-    if (lfb->fbdev) {
-        lua_pushfstring(L, "Framebuffer: %s (%s)", lfb->fbdev, lfb->finfo.id);
+    if (fb->fd >= 0) {
+        close(fb->fd);
+        fb->fd = -1;
+        free(fb->fbdev);
+    }
+
+    return 0;
+}
+
+static int lfb_framebuffer_getvarinfo(lua_State *L) {
+    framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 1);
+
+    ioctl(fb->fd, FBIOGET_VSCREENINFO, &fb->vinfo);
+
+    lua_newtable(L);
+
+    LUA_T_PUSH_S_N("xres", fb->vinfo.xres);
+    LUA_T_PUSH_S_N("yres", fb->vinfo.yres);
+    LUA_T_PUSH_S_N("xres_virtual", fb->vinfo.xres_virtual);
+    LUA_T_PUSH_S_N("yres_virtual", fb->vinfo.yres_virtual);
+    LUA_T_PUSH_S_N("xoffset", fb->vinfo.xoffset);
+    LUA_T_PUSH_S_N("yoffset", fb->vinfo.yoffset);
+    LUA_T_PUSH_S_N("bits_per_pixel", fb->vinfo.bits_per_pixel);
+    LUA_T_PUSH_S_N("grayscale", fb->vinfo.grayscale);
+    LUA_T_PUSH_S_N("nonstd", fb->vinfo.nonstd);
+    LUA_T_PUSH_S_N("activate", fb->vinfo.activate);
+    LUA_T_PUSH_S_N("width", fb->vinfo.width);
+    LUA_T_PUSH_S_N("height", fb->vinfo.height);
+
+    LUA_T_PUSH_S_N("pixclock", fb->vinfo.pixclock);
+    LUA_T_PUSH_S_N("left_margin", fb->vinfo.left_margin);
+    LUA_T_PUSH_S_N("right_margin", fb->vinfo.right_margin);
+    LUA_T_PUSH_S_N("upper_margin", fb->vinfo.upper_margin);
+    LUA_T_PUSH_S_N("lower_margin", fb->vinfo.lower_margin);
+    LUA_T_PUSH_S_N("hsync_len", fb->vinfo.hsync_len);
+    LUA_T_PUSH_S_N("vsync_len", fb->vinfo.vsync_len);
+    LUA_T_PUSH_S_N("sync", fb->vinfo.sync);
+    LUA_T_PUSH_S_N("vmode", fb->vinfo.vmode);
+    LUA_T_PUSH_S_N("rotate", fb->vinfo.rotate);
+    LUA_T_PUSH_S_N("colorspace", fb->vinfo.colorspace);
+
+    return 1;
+}
+
+static int lfb_framebuffer_getfixinfo(lua_State *L) {
+    framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 1);
+
+    lua_newtable(L);
+
+    LUA_T_PUSH_S_S("id", fb->finfo.id)
+    LUA_T_PUSH_S_N("smem_start", fb->finfo.smem_start);
+    LUA_T_PUSH_S_N("type", fb->finfo.type);
+    LUA_T_PUSH_S_N("type_aux", fb->finfo.type_aux);
+    LUA_T_PUSH_S_N("visual", fb->finfo.visual);
+    LUA_T_PUSH_S_N("xpanstep", fb->finfo.xpanstep);
+    LUA_T_PUSH_S_N("ypanstep", fb->finfo.ypanstep);
+    LUA_T_PUSH_S_N("ywrapstep", fb->finfo.ywrapstep);
+    LUA_T_PUSH_S_N("line_length", fb->finfo.line_length);
+    LUA_T_PUSH_S_N("mmio_start", fb->finfo.mmio_start);
+    LUA_T_PUSH_S_N("mmio_len", fb->finfo.mmio_len);
+    LUA_T_PUSH_S_N("accel", fb->finfo.accel);
+    LUA_T_PUSH_S_N("capabilities", fb->finfo.capabilities);
+
+    return 1;
+}
+
+static int lfb_framebuffer_setvarinfo(lua_State *L) {
+    framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 1);
+
+    ioctl(fb->fd, FBIOGET_VSCREENINFO, &fb->vinfo);
+
+    getnumfield32(L, "xres", &fb->vinfo.xres);
+    getnumfield32(L, "yres", &fb->vinfo.yres);
+    getnumfield32(L, "xres_virtual", &fb->vinfo.xres_virtual);
+    getnumfield32(L, "yres_virtual", &fb->vinfo.yres_virtual);
+    getnumfield32(L, "xoffset", &fb->vinfo.xoffset);
+    getnumfield32(L, "yoffset", &fb->vinfo.yoffset);
+    getnumfield32(L, "bits_per_pixel", &fb->vinfo.bits_per_pixel);
+    getnumfield32(L, "grayscale", &fb->vinfo.grayscale);
+    getnumfield32(L, "nonstd", &fb->vinfo.nonstd);
+    getnumfield32(L, "activate", &fb->vinfo.activate);
+    getnumfield32(L, "width", &fb->vinfo.width);
+    getnumfield32(L, "height", &fb->vinfo.height);
+
+    getnumfield32(L, "pixclock", &fb->vinfo.pixclock);
+    getnumfield32(L, "left_margin", &fb->vinfo.left_margin);
+    getnumfield32(L, "right_margin", &fb->vinfo.right_margin);
+    getnumfield32(L, "upper_margin", &fb->vinfo.upper_margin);
+    getnumfield32(L, "lower_margin", &fb->vinfo.lower_margin);
+    getnumfield32(L, "hsync_len", &fb->vinfo.hsync_len);
+    getnumfield32(L, "vsync_len", &fb->vinfo.vsync_len);
+    getnumfield32(L, "sync", &fb->vinfo.sync);
+    getnumfield32(L, "vmode", &fb->vinfo.vmode);
+    getnumfield32(L, "rotate", &fb->vinfo.rotate);
+    getnumfield32(L, "colorspace", &fb->vinfo.colorspace);
+
+    return 1;
+}
+
+static int lfb_framebuffer_tostring(lua_State *L) {
+    framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 1);
+
+    if (fb->fbdev) {
+        lua_pushfstring(L, "Framebuffer: %s (%s)", fb->fbdev, fb->finfo.id);
     } else {
         lua_pushfstring(L, "Closed framebuffer");
     }
@@ -333,7 +364,7 @@ static int lfb_drawbuffer_clear(lua_State *L) {
 
 static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
-    framebuffer_t *lfb = (framebuffer_t *)lua_touserdata(L, 2);
+    framebuffer_t *fb = (framebuffer_t *)lua_touserdata(L, 2);
     
     int x = lua_tointeger(L, 3);
     int y = lua_tointeger(L, 4);
@@ -346,13 +377,13 @@ static int lfb_drawbuffer_draw_to_fb(lua_State *L) {
     for (cy=0; cy < db->h; cy=cy+1) {
         for (cx=0; cx < db->w; cx=cx+1) {
             p = db->data[cy*db->w+cx];
-            pixel = getcolor(lfb, p.r, p.g, p.b);
+            pixel = getcolor(fb, p.r, p.g, p.b);
             
-            if (x+cx < 0 || y+cy < 0 || x+cx >= (int)lfb->vinfo.xres || y+cy >= (int)lfb->vinfo.yres || p.a <= 0) {
+            if (x+cx < 0 || y+cy < 0 || x+cx >= (int)fb->vinfo.xres || y+cy >= (int)fb->vinfo.yres || p.a <= 0) {
                 continue;
             } else {
-                location = (x + cx + lfb->vinfo.xoffset) * (lfb->vinfo.bits_per_pixel/8) + (y + cy + lfb->vinfo.yoffset) * lfb->finfo.line_length;
-                switch (lfb->vinfo.bits_per_pixel) {
+                location = (x + cx + fb->vinfo.xoffset) * (fb->vinfo.bits_per_pixel/8) + (y + cy + fb->vinfo.yoffset) * fb->finfo.line_length;
+                switch (fb->vinfo.bits_per_pixel) {
                     case 16:
                         *(uint16_t*)(lfb->data + location) = pixel;
                         break;
@@ -517,51 +548,12 @@ static int lfb_drawbuffer(lua_State *L) {
 
 
 
-static int lfb_new(lua_State *L) {
-    framebuffer_t *lfb = (framebuffer_t *)lua_newuserdata(L, sizeof(*lfb));
-
-    lfb->fd = open(luaL_checkstring(L, 1), O_RDWR);
-    if (lfb->fd < 0) {
-        return luaL_error(L, "Couldn't open framebuffer: %s", strerror(errno));
-    }
-
-    ioctl(lfb->fd, FBIOGET_FSCREENINFO, &lfb->finfo);
-    ioctl(lfb->fd, FBIOGET_VSCREENINFO, &lfb->vinfo);
-    if (lfb->vinfo.bits_per_pixel != 16 && lfb->vinfo.bits_per_pixel != 32) {
-        close(lfb->fd);
-        lfb->fd = -1;
-        return luaL_error(L, "Only 16 & 32 bpp are supported, not: %d", lfb->vinfo.bits_per_pixel);
-    }
-    lfb->data = mmap(0, (lfb->vinfo.yres_virtual * lfb->finfo.line_length), PROT_READ | PROT_WRITE, MAP_SHARED, lfb->fd, (off_t)0);
-    lfb->fbdev = strdup(luaL_checkstring(L, 1));
-
-    lua_createtable(L, 0, 9);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");
-
-    
-    // LUA_T_PUSH_S_CF("setpixel", &lfb_setpixel);
-    // LUA_T_PUSH_S_CF("setrect", &lfb_setrect);
-    // LUA_T_PUSH_S_CF("clear", lfb_clear)
-    LUA_T_PUSH_S_CF("close", lfb_close)
-    LUA_T_PUSH_S_CF("get_fixinfo", lfb_getfixinfo)
-    LUA_T_PUSH_S_CF("get_varinfo", lfb_getvarinfo)
-    LUA_T_PUSH_S_CF("set_varinfo", lfb_setvarinfo)
-    LUA_T_PUSH_S_CF("__gc", lfb_close)
-    LUA_T_PUSH_S_CF("__tostring", lfb_tostring)
-    lua_setmetatable(L, -2);
-
-    return 1;
-}
-
-
-
 
 LUALIB_API int luaopen_lfb(lua_State *L) {
     lua_newtable(L);
 
     LUA_T_PUSH_S_S("version", VERSION)
-    LUA_T_PUSH_S_CF("new_fb", lfb_new)
+    LUA_T_PUSH_S_CF("new_framebuffer", lfb_framebuffer)
     LUA_T_PUSH_S_CF("new_drawbuffer", lfb_drawbuffer)
 
     return 1;
