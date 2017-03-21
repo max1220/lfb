@@ -258,31 +258,49 @@ static int lfb_drawbuffer_clear(lua_State *L) {
 
 static int lfb_drawbuffer_pixel_function(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
-    pixel_t p;
     int x,y;
-    
-    if (lua_gettop(L) == 2 && lua_isfunction(L, 2)) {
-        for (y = 0; y < db->h; y=y+1) {
-            for (x = 0; x < db->w; x=x+1) {
-                p = db->data[y*db->w+x];
-                lua_pushnumber(L, x);
-                lua_pushnumber(L, y);
-                lua_pushnumber(L, p.r);
-                lua_pushnumber(L, p.g);
-                lua_pushnumber(L, p.b);
-                lua_pushnumber(L, p.a);
-                lua_pcall(L, 6, 4, 0);
-                p.r = lua_tointeger(L, 1);
-                p.g = lua_tointeger(L, 2);
-                p.b = lua_tointeger(L, 3);
-                p.a = lua_tointeger(L, 4);
-                lua_pop(L, 4);
-                db->data[y*db->w+x] = p;
+    pixel_t p;
+
+    for (y=0; y<db->h; y=y+1) {
+        for (x=0; x<db->w; x=x+1) {
+            p = db->data[y*db->w+x];
+            
+            // duplicate function
+            lua_pushvalue(L, 2);
+            
+            // push 6 function arguments
+            lua_pushinteger(L, x);
+            lua_pushinteger(L, y);
+            lua_pushinteger(L, p.r);
+            lua_pushinteger(L, p.g);
+            lua_pushinteger(L, p.b);
+            lua_pushinteger(L, p.a);
+           
+            // execute
+            if (lua_pcall(L, 6, 4, 0)) {
+                return luaL_error(L, "pixel function failed!\n");
             }
+            
+            // lua_call(L, 6,4);
+            
+            // update p
+            p.a = lua_tointeger(L, -1);
+            p.b = lua_tointeger(L, -2);
+            p.g = lua_tointeger(L, -3);
+            p.r = lua_tointeger(L, -4);
+            
+            // printf("x:%.4d y: %.4d \t r:%.2d  g:%.2d  b:%.2d  a:%.2d\n",x,y,p.r,p.g,p.b,p.a);
+            
+            // remove arguments
+            lua_pop(L, 4);
+            
+            // Write back to buffer
+            db->data[y*db->w+x] = p;
+            
         }
     }
-    return 0;
 
+    return 0;
 }
 
 static int lfb_drawbuffer_draw_to_framebuffer(lua_State *L) {
@@ -302,7 +320,7 @@ static int lfb_drawbuffer_draw_to_framebuffer(lua_State *L) {
             p = db->data[cy*db->w+cx];
             pixel = getcolor(fb, p.r, p.g, p.b);
             
-            if (x+cx < 0 || y+cy < 0 || x+cx >= (int)fb->vinfo.xres || y+cy >= (int)fb->vinfo.yres || p.a <= 0) {
+            if (x+cx < 0 || y+cy < 0 || x+cx > (int)fb->vinfo.xres || y+cy > (int)fb->vinfo.yres || p.a <= 1) {
                 continue;
             } else {
                 location = (x + cx + fb->vinfo.xoffset) * (fb->vinfo.bits_per_pixel/8) + (y + cy + fb->vinfo.yoffset) * fb->finfo.line_length;
@@ -318,8 +336,7 @@ static int lfb_drawbuffer_draw_to_framebuffer(lua_State *L) {
         }
     }
 
-    lua_pushnumber(L, 0);
-    return 1;
+    return 0;
 }
 
 static int lfb_drawbuffer_draw_to_drawbuffer(lua_State *L) {
@@ -329,27 +346,35 @@ static int lfb_drawbuffer_draw_to_drawbuffer(lua_State *L) {
     int target_x = lua_tointeger(L, 3);
     int target_y = lua_tointeger(L, 4);
     
-    int origin_x = lua_tointeger(L, 3);
-    int origin_y = lua_tointeger(L, 4);
+    int origin_x = lua_tointeger(L, 5);
+    int origin_y = lua_tointeger(L, 6);
     
-    int w = lua_tointeger(L, 5);
-    int h = lua_tointeger(L, 6);
+    int w = lua_tointeger(L, 7);
+    int h = lua_tointeger(L, 8);
+    
+    // printf("tx:%d ty:%d   ox:%d oy:%d w:%d h:%d\n", target_x, target_y, origin_x, origin_y, w, h);
     
     int cx;
     int cy;
+    
+    pixel_t p;
 
     for (cy=0; cy < h; cy=cy+1) {
         for (cx=0; cx < w; cx=cx+1) {
-            if (target_x + cx >= target_db->w || target_y + cy >= target_db->h || origin_x + cx >= origin_db->w || origin_y + cy >= origin_db->h ) {
+            p = origin_db->data[(cy+origin_y)*(origin_db->w)+cx+origin_x];
+            if ( target_x+cx >= target_db->w || target_y+cy >= target_db->h || \
+                origin_x+cx >= origin_db->w || origin_y+cy >= origin_db->h || \
+                target_x+cx < 0 || target_y+cy < 0 || \
+                origin_x+cx < 0 || origin_y+cy < 0 || \
+                p.a < 1) {
                 continue;
             } else {
-                target_db->data[(cy+target_y)*target_db->w+cx+target_x] = origin_db->data[(cy+origin_y)*origin_db->w+cx+origin_x];
+                target_db->data[(cy+target_y)*(target_db->w)+cx+target_x] = p;
             }
         }
     }
 
-    lua_pushnumber(L, 0);
-    return 1;
+    return 0;
 }
 
 static int lfb_drawbuffer_get_pixel(lua_State *L) {
