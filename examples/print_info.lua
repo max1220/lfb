@@ -1,7 +1,9 @@
-#!/usr/bin/env lua5.1
+#!/usr/bin/env luajit
+package.cpath = package.cpath .. ";../?.so"
+package.path = package.path .. ";../?.lua"
 
 local lfb = require("lfb")
-local fb = lfb.new("/dev/fb0")
+local fb = lfb.new_framebuffer("/dev/fb0")
 local varinfo = fb:get_varinfo()
 local fixinfo = fb:get_fixinfo()
 

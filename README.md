@@ -23,11 +23,11 @@ Don't expect compability with versions < 1.
 
 
 
-command                      | description
----------------------------- | -----------
-lfb.version()                | Version string
-fb = lfb.new_fb(fbdev)       | Creates a new framebuffer userspace object & returns it. fbdev is a string, for example "/dev/fb0"
-db = lfb.new_drawbuffer(w,h) | Creates a new drawing buffer.
+command                         | description
+------------------------------- | -----------
+lfb.version()                   | Version string
+fb = lfb.new_framebuffer(fbdev) | Creates a new framebuffer userspace object & returns it. fbdev is a string, for example "/dev/fb0"
+db = lfb.new_drawbuffer(w,h)    | Creates a new drawing buffer.
 
 command               | description
 --------------------- | -----------
@@ -43,7 +43,8 @@ r,g,b = db:get_pixel(x,y)  | Gets r,g,b values(0-255) at x,y
 db:set_pixel(x,y,r,g,b)    | Sets r,g,b values(0-255) at x,y
 db:set_rect(x,y,w,h,r,g,b) | Fills the rectangle specified via x,y,w,h to r,g,b(0-255)
 db:set_box(x,y,w,h,r,g,b)  | Draws outline of the rectangle specified via x,y,w,h to r,g,b(0-255)
-db:draw_to_fb(fb, x, y)    | Draws the drawing buffer to the framebufer at the specified coordinates
+db:draw_to_fb(fb, x, y)    | Draws the drawbuffer to the framebufer at the specified coordinates
+db:draw_to_drawbuffer(tdb, tx, ty, ox, oy, w, h) | Draws the drawbuffer to another drawbuffer(tdb), at tx,ty. ox,oy is the offset in the origin drawbuffer. w,h are width,height of the rect to be drawn. 
 
 
 

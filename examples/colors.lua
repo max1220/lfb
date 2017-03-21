@@ -1,7 +1,9 @@
 #!/usr/bin/env luajit
+package.cpath = package.cpath .. ";../?.so"
+package.path = package.path .. ";../?.lua"
 
 local lfb = require("lfb")
-local fb = lfb.new_fb("/dev/fb0")
+local fb = lfb.new_framebuffer("/dev/fb0")
 local varinfo = fb:get_varinfo()
 local buffer = lfb.new_drawbuffer(varinfo.xres, varinfo.yres)
 
@@ -26,12 +28,12 @@ for x=0, xmax do
             local r =-dist_r * 255
             local g =-dist_g * 255
             local b =-dist_b * 255
-            buffer:set_pixel(x,y, r,g,b)
+            buffer:set_pixel(x,y, r,g,b, 255)
         end
     end
 end
 
-buffer:draw_to_fb(fb, 0, 0)
+buffer:draw_to_framebuffer(fb, 0, 0)
 
 
 
