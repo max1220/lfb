@@ -21,6 +21,8 @@ Usage
 Since version 1.0 lfb uses a buffer for all drawing operations that is then drawn to the framebuffer.
 Don't expect compability with versions < 1.
 
+lfb coordinates start at 0,0 and go to width-1,height-1. r,g,b are in the range 0-255.
+
 
 
 command                         | description
@@ -37,14 +39,19 @@ fb:set_varinfo(vinfo) | Sets variable info (Variable names are as in getvarinfo;
 fb:close()            | Closes the framebuffer
 fb:__tostring()       | Returns an identifier for the framebuffer device (For example: "Framebuffer: /dev/fb0 (inteldrmfb)")
 
-command                    | description
--------------------------- | -----------
-r,g,b = db:get_pixel(x,y)  | Gets r,g,b values(0-255) at x,y
-db:set_pixel(x,y,r,g,b)    | Sets r,g,b values(0-255) at x,y
-db:set_rect(x,y,w,h,r,g,b) | Fills the rectangle specified via x,y,w,h to r,g,b(0-255)
-db:set_box(x,y,w,h,r,g,b)  | Draws outline of the rectangle specified via x,y,w,h to r,g,b(0-255)
-db:draw_to_fb(fb, x, y)    | Draws the drawbuffer to the framebufer at the specified coordinates
-db:draw_to_drawbuffer(tdb, tx, ty, ox, oy, w, h) | Draws the drawbuffer to another drawbuffer(tdb), at tx,ty. ox,oy is the offset in the origin drawbuffer. w,h are width,height of the rect to be drawn. 
+command                          | description
+-------------------------------- | -----------
+db.width                         | Width
+db.height                        | Height
+r,g,b,a = db:get_pixel(x,y)      | Gets r,g,b,a at x,y
+db:set_pixel(x,y,r,g,b,a)        | Sets x,y to r,g,b,a
+db:set_rect(x,y,w,h,r,g,b,a)     | Fills the rectangle specified via x,y,w,h to r,g,b,a
+db:set_box(x,y,w,h,r,g,b,a)      | Draws the outline of the rectangle w,h at x,y in r,g,b,a
+db:set_line(x0,y0,x1,y1,r,g,b,a) | Draws a line from x0,y0 to x1,y1 in r,g,b,a
+db:clear(r,g,b,a)                | Fill with r,g,b,a
+db:pixel_function(function(x,y,r,g,b,a) return r,g,b,a end) | Execute a function for each pixel in db that should return the new r,g,b,a values at x,y
+db:draw_to_framebuffer(fb, x, y) | Draws db to the fb at x,y
+db:draw_to_drawbuffer(tdb, tx, ty, ox, oy, w, h)  | Draws db to tdb at tx,ty. ox,oy is the offset in the origin drawbuffer. w,h set the area to draw.
 
 
 

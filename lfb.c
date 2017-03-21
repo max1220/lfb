@@ -461,6 +461,43 @@ static int lfb_drawbuffer_set_box(lua_State *L) {
     return 0;
 }
 
+static int lfb_drawbuffer_set_line(lua_State *L) {
+    drawbuffer_t *db = (drawbuffer_t *)lua_touserdata(L, 1);
+    int x0 = lua_tointeger(L, 2);
+    int y0 = lua_tointeger(L, 3);
+    int x1 = lua_tointeger(L, 4);
+    int y1 = lua_tointeger(L, 5);
+    
+    int r = lua_tointeger(L, 6);
+    int g = lua_tointeger(L, 7);
+    int b = lua_tointeger(L, 8);
+    int a = lua_tointeger(L, 9);
+
+    pixel_t p = {.r=r, .g=g, .b=b, .a=a};
+
+    int dx = abs(x1-x0), sx = x0<x1 ? 1 : -1;
+    int dy = abs(y1-y0), sy = y0<y1 ? 1 : -1; 
+    int err = (dx>dy ? dx : -dy)/2, e2;
+     
+    while(1) {
+        db->data[y0*db->w+x0] = p;
+        if (x0==x1 && y0==y1) {
+            break;
+        }
+        e2 = err;
+        if (e2 >-dx) {
+            err -= dy;
+            x0 += sx;
+        }
+        if (e2 < dy) {
+            err += dx;
+            y0 += sy;
+        }
+    }
+    
+    return 0;
+}
+
 static int lfb_drawbuffer(lua_State *L) {
     drawbuffer_t *db = (drawbuffer_t *)lua_newuserdata(L, sizeof(*db));
     
@@ -482,6 +519,7 @@ static int lfb_drawbuffer(lua_State *L) {
     LUA_T_PUSH_S_CF("set_pixel", lfb_drawbuffer_set_pixel)
     LUA_T_PUSH_S_CF("set_rect", lfb_drawbuffer_set_rect)
     LUA_T_PUSH_S_CF("set_box", lfb_drawbuffer_set_box)
+    LUA_T_PUSH_S_CF("set_line", lfb_drawbuffer_set_line)
     LUA_T_PUSH_S_CF("clear", lfb_drawbuffer_clear)
     LUA_T_PUSH_S_CF("draw_to_framebuffer", lfb_drawbuffer_draw_to_framebuffer)
     LUA_T_PUSH_S_CF("draw_to_drawbuffer", lfb_drawbuffer_draw_to_drawbuffer)
