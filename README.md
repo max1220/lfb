@@ -59,3 +59,20 @@ db:draw_to_drawbuffer(tdb, tx, ty, ox, oy, w, h)  | Draws db to tdb at tx,ty. ox
 Examples
 --------
 See examples/ folder.
+
+
+
+
+Screenshots
+-----------
+
+##examples/colors.lua##
+![colors example](https://raw.githubusercontent.com/max1220/lfb/master/screenshots/colors.png)
+
+
+##examples/spin.lua##
+![spin example](https://raw.githubusercontent.com/max1220/lfb/master/screenshots/spin.png)
+
+
+##examples/rect_benchmark.lua##
+![rectangle benchmark example](https://raw.githubusercontent.com/max1220/lfb/master/screenshots/rect_benchmark.png)
